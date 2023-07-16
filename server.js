@@ -39,6 +39,10 @@ app.use("/:sheetName", async (req, res, next) => {
     // read & update view count
     const viewCount = await getViewCount(sheetId, countCell);
     await updateViewCount(sheetId, countCell, viewCount + 1);
+
+    // add timestamp
+    await addInfo(sheetId, sheetName, req.ip);
+    console.log(req.ip);
   } catch (err) {
     console.log("The API returned an error: " + err);
   }
@@ -106,6 +110,28 @@ async function updateViewCount(sheetId, countCell, newCount) {
     valueInputOption: "USER_ENTERED",
     resource: {
       values: [[newCount.toString()]],
+    },
+  });
+}
+
+async function addInfo(sheetId, sheetName, ip) {
+  const t = new Date();
+  const date = `${t.getMonth()}/${t.getDate()}/${t.getFullYear()} ${t.getHours()}:${t.getMinutes()}`;
+  const readResponse = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: `${sheetName}`,
+  });
+  const rowCount = readResponse.data.values
+    ? readResponse.data.values.length
+    : 0;
+  const nextRow = rowCount + 1;
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: sheetId,
+    range: `${sheetName}!A${nextRow}`,
+    valueInputOption: "USER_ENTERED",
+    resource: {
+      values: [[date, ip]],
     },
   });
 }
