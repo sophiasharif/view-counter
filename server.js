@@ -25,6 +25,10 @@ let sheets;
 app.use("/:sheetName", async (req, res, next) => {
   const { sheetName } = req.params;
 
+  if (sheetName === "favicon.ico") {
+    return;
+  }
+
   try {
     const sheetId = process.env.SHEET_ID;
     const countCell = `${sheetName}!B1`;
@@ -39,14 +43,21 @@ app.use("/:sheetName", async (req, res, next) => {
     const viewCount = await getViewCount(sheetId, countCell);
     await updateViewCount(sheetId, countCell, viewCount + 1);
 
-    // add info to sheet
+    // add info to sheets
     await addInfo(
       sheetId,
       sheetName,
       req.ip,
       req.headers["user-agent"],
-      req.headers["accept-language"],
-      req.hostname
+      req.headers["accept-language"]
+    );
+    await addInfoWithWebsite(
+      sheetId,
+      "all",
+      sheetName,
+      req.ip,
+      req.headers["user-agent"],
+      req.headers["accept-language"]
     );
   } catch (err) {
     console.log("The API returned an error: " + err);
@@ -97,7 +108,7 @@ async function createSheet(sheetId, sheetName) {
       values: [
         ["View Count:", "0"],
         [],
-        ["Time", "IP", "User Agent", "Preferred Language", "Host Name"],
+        ["Time", "IP", "User Agent", "Preferred Language"],
       ],
     },
   });
@@ -123,7 +134,7 @@ async function updateViewCount(sheetId, countCell, newCount) {
   });
 }
 
-async function addInfo(sheetId, sheetName, ip, user_agent, lang, hostname) {
+async function addInfo(sheetId, sheetName, ip, user_agent, lang) {
   const readResponse = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
     range: `${sheetName}`,
@@ -146,7 +157,43 @@ async function addInfo(sheetId, sheetName, ip, user_agent, lang, hostname) {
           ip,
           user_agent,
           lang,
-          hostname,
+        ],
+      ],
+    },
+  });
+}
+
+async function addInfoWithWebsite(
+  sheetId,
+  sheetName,
+  website,
+  ip,
+  user_agent,
+  lang
+) {
+  const readResponse = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: `${sheetName}`,
+  });
+  const rowCount = readResponse.data.values
+    ? readResponse.data.values.length
+    : 0;
+  const nextRow = rowCount + 1;
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: sheetId,
+    range: `${sheetName}!A${nextRow}`,
+    valueInputOption: "USER_ENTERED",
+    resource: {
+      values: [
+        [
+          new Date().toLocaleString("en-US", {
+            timeZone: "America/Los_Angeles",
+          }),
+          website,
+          ip,
+          user_agent,
+          lang,
         ],
       ],
     },
