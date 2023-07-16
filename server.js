@@ -41,8 +41,10 @@ app.use("/:sheetName", async (req, res, next) => {
     await updateViewCount(sheetId, countCell, viewCount + 1);
 
     // add timestamp
+    const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+    console.log(req.headers["x-forwarded-for"]);
     await addInfo(sheetId, sheetName, req.ip);
-    console.log(req.ip);
+    console.log(ip);
   } catch (err) {
     console.log("The API returned an error: " + err);
   }
@@ -115,8 +117,6 @@ async function updateViewCount(sheetId, countCell, newCount) {
 }
 
 async function addInfo(sheetId, sheetName, ip) {
-  const t = new Date();
-  const date = `${t.getMonth()}/${t.getDate()}/${t.getFullYear()} ${t.getHours()}:${t.getMinutes()}`;
   const readResponse = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
     range: `${sheetName}`,
@@ -131,7 +131,7 @@ async function addInfo(sheetId, sheetName, ip) {
     range: `${sheetName}!A${nextRow}`,
     valueInputOption: "USER_ENTERED",
     resource: {
-      values: [[date, ip]],
+      values: [[new Date().toLocaleString("en-US"), ip]],
     },
   });
 }
