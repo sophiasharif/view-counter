@@ -24,7 +24,6 @@ let sheets;
 // MAIN MIDDLEWARE
 app.use("/:sheetName", async (req, res, next) => {
   const { sheetName } = req.params;
-  console.log(sheetName);
 
   try {
     const sheetId = process.env.SHEET_ID;
@@ -40,11 +39,15 @@ app.use("/:sheetName", async (req, res, next) => {
     const viewCount = await getViewCount(sheetId, countCell);
     await updateViewCount(sheetId, countCell, viewCount + 1);
 
-    // add timestamp
-    const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
-    console.log(req.headers["x-forwarded-for"]);
-    await addInfo(sheetId, sheetName, req.ip);
-    console.log(ip);
+    // add info to sheet
+    await addInfo(
+      sheetId,
+      sheetName,
+      req.ip,
+      req.headers["user-agent"],
+      req.headers["accept-language"],
+      req.hostname
+    );
   } catch (err) {
     console.log("The API returned an error: " + err);
   }
@@ -88,10 +91,14 @@ async function createSheet(sheetId, sheetName) {
 
   await sheets.spreadsheets.values.update({
     spreadsheetId: sheetId,
-    range: `${sheetName}!A1:B2`,
+    range: `${sheetName}!A1:E3`,
     valueInputOption: "USER_ENTERED",
     resource: {
-      values: [["View Count:", "0"]],
+      values: [
+        ["View Count:", "0"],
+        [],
+        ["Time", "IP", "User Agent", "Preferred Language", "Host Name"],
+      ],
     },
   });
 }
@@ -116,7 +123,7 @@ async function updateViewCount(sheetId, countCell, newCount) {
   });
 }
 
-async function addInfo(sheetId, sheetName, ip) {
+async function addInfo(sheetId, sheetName, ip, user_agent, lang, hostname) {
   const readResponse = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
     range: `${sheetName}`,
@@ -131,7 +138,17 @@ async function addInfo(sheetId, sheetName, ip) {
     range: `${sheetName}!A${nextRow}`,
     valueInputOption: "USER_ENTERED",
     resource: {
-      values: [[new Date().toLocaleString("en-US"), ip]],
+      values: [
+        [
+          new Date().toLocaleString("en-US", {
+            timeZone: "America/Los_Angeles",
+          }),
+          ip,
+          user_agent,
+          lang,
+          hostname,
+        ],
+      ],
     },
   });
 }
