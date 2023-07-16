@@ -47,7 +47,7 @@ app.use("/:sheetName", async (req, res, next) => {
 });
 
 app.get("/:all", (req, res) => {
-  res.send('<img src="/blank.svg"/>');
+  res.sendFile(__dirname + "/public/pixel.png");
 });
 
 app.listen(port, () => {
